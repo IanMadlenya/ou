@@ -10,6 +10,10 @@ We use the historic data to estimate the parameters for Ornstein Uhlenbeck proce
 
 ### 2.1 Method
 
+The Ornstein-Uhlenbeck or Vasicek process is   a stochastic process which is stationary, Gaussian, and Markovian. 
+
+Over time, the process tends to drift towards its long-term mean: such a process is called mean-reverting.
+
 The Ornstein-Uhlenbeck or Vasicek process is the unique solution to the following stochastic differential equation:(Stochastic Differential Equation, 2008, p44.)
 
 Ornstein-Uhlenbeck model
@@ -32,11 +36,16 @@ In finance, the model more often is written as:
 $$ dS_t = \theta(\mu - S_t)dt + \sigma dW_t$$
 
 
-where  $\sigma$ is interpreted as the  instantaneous volatility ,   $\sigma^2/(2\theta)$ is the long term variance;  $\mu$ is the long-run equilibrium value of the process, and $\theta$ is the speed of reversion.
+
+where  $\sigma$ is interpreted as the  instantaneous volatility ,   $\sigma^2/(2\theta)$ is the long term variance;  $\mu$ is the long-run equilibrium value of the process, and $\theta$ is the speed of reversion.
 
 $\theta$ increases the speed at which the system stabilizes around the long term mean $\mu$.
 
 $\sigma$ increases the amount of  randomness entering the system.
+
+
+"The Ornstein-Uhlenbeck process is one of several approaches used to model (with modifications) interest rates, currency exchange rates, and commodity prices stochastically. The parameter $\mu$ represents the equilibrium or mean value supported by fundamentals; $\sigma$ the degree of volatility around it caused by shocks, and $\theta$ the rate by which these shocks dissipate and the variable reverts towards the mean."(Wikipedia)
+
 
 
 For $\theta_2>0$,  $X_t~$ are assumed iid $$N(\frac{\theta_1}{\theta_2},\frac{\theta_3^{2}}{2\theta_2})$$.
@@ -53,7 +62,7 @@ $$v(t,x) = Var_\theta(X_t ~|~ X_0 = x_0) =\frac{\theta_3^2 (1- e^{-2 \theta_2 t}
 
 
 
-### 2.2 Data processing
+### 2.1.0 Data processing
 
 We got monthly price data of crops in Alberta from **Statistics Canada**[http://www5.statcan.gc.ca/subject-sujet/result-resultat?pid=920&id=2024&lang=eng&type=ARRAY&sortType=3&pageNum=0](http://www5.statcan.gc.ca/subject-sujet/result-resultat?pid=920&id=2024&lang=eng&type=ARRAY&sortType=3&pageNum=0).
 
@@ -90,12 +99,14 @@ $$\frac{\theta_1}{\theta_2} = \mu   ~~\mbox{and}~~ \theta_2 = \theta ~~\mbox{and
 #### 2.2.1 "sde.sim" package
 
 Get the necessary packeages and functions
-```
+```{r}
 # install.packages("stats4")
 # install.packages("sde")
 require ( stats4 )
 require ( sde )
+```
 
+```
 # Two functions from page 114
 
  
@@ -165,7 +176,7 @@ ouFit.ML=function(spread) {
 ##### 2.2.2.1 Calculate the parameters for wheat
 
 ```{r}
-source("oufit.R")
+# source("oufit.R") # not necessary
 
 wheat <- as.vector(price[,2]) # convert to vector 
 head(wheat)
@@ -223,7 +234,10 @@ Recall "yuima" package uses this notation:
 
 $$ dS_t = \theta(\mu - S_t)dt + \sigma dW_t$$
 
-The deltat $\dt$ is set $=1/n=1/100$ by default. We can change it by using $grid=setSampling(Terminal=1,n=1000)$. 
+The delta of t  
+$$dt=(1/n)=(1/100)$$
+
+by default. We can change it by using $grid=setSampling(Terminal=1,n=1000)$. 
 
 #### 3.1.1  Generate  1000 random samples  with 1000 time periods for wheats price using the parameters from estimate
 
