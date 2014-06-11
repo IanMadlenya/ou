@@ -66,6 +66,7 @@ $$v(t,x) = Var_\theta(X_t ~|~ X_0 = x_0) =\frac{\theta_3^2 (1- e^{-2 \theta_2 t}
 
 We got monthly price data of crops in Alberta from **Statistics Canada**[http://www5.statcan.gc.ca/subject-sujet/result-resultat?pid=920&id=2024&lang=eng&type=ARRAY&sortType=3&pageNum=0](http://www5.statcan.gc.ca/subject-sujet/result-resultat?pid=920&id=2024&lang=eng&type=ARRAY&sortType=3&pageNum=0).
 
+In excel, we transform the date format to month/day/year, which save some time.
 
 
 ```{r}
@@ -90,59 +91,7 @@ head(price)
 
 ### 2.2  Calibration using Maximum Likelihood estimates
 
-There are many ways to calculate the parameters. We tried two ways. First, we use package "sde.sim" (Stochastic Differential Equation, 2008); 
-
-Recap
-$$\frac{\theta_1}{\theta_2} = \mu   ~~\mbox{and}~~ \theta_2 = \theta ~~\mbox{and}~~ \theta_3 = \sigma$$.
-
-
-#### 2.2.1 "sde.sim" package
-
-Get the necessary packeages and functions
-```{r}
-# install.packages("stats4")
-# install.packages("sde")
-require ( stats4 )
-require ( sde )
-```
-
-```
-# Two functions from page 114
-
- 
-# Functions dcOU evaluates the conditional density of the process. It generates the density of the x which from cerntain distribution
-dcOU<- function (x, t, x0 , theta , log = FALSE ){
-        Ex <- theta [1] / theta [2]+( x0 - theta [1] / theta [2]) * exp (- theta [2] *t)
-        Vx <- theta [3]^2 *(1- exp (-2* theta [2] *t))/(2* theta [2])
-        dnorm (x, mean =Ex , sd = sqrt (Vx), log = log )
-}
-
-
-# Function OU.lik generates the log likelihood function of X for the MLE process. 
-OU.lik <- function ( theta1 , theta2 , theta3 ){
-        n <- length (X)
-        # deltat is the time interval between observations
-        dt <- deltat (X)-sum (dcOU (X [2: n], dt , X [1:(n -1)] , c( theta1 , theta2 , theta3 ), log = TRUE ))
-}
-# The function OU.lik needs as input the three parameters and assumes that sample observations of the process are available in the current R workspace in the ts object X.
-
-```
-
-##### 2.2.1.1 Calculate the parameters for wheat
-
-Mle is very sensitive for the start value. We choose theta1 =20, theta2 =0.1 , theta3 =1.
-We cannot get it converg. It seems not working.
-(The result value which the process converges to might not be the unique solution. )
-```
-wheat <- as.vector(price[,2]) # convert to vector 
-head(wheat)
-X <- ts(data=wheat)
-mle(OU.lik , start = list ( theta1 =20, theta2= 0.1 , theta3 =10) , method ="L-BFGS-B", lower =c(-Inf ,0 ,0)) -> fitwheat
-summary ( fitwheat )
-coef(fitwheat)[[1]]/coef(fitwheat)[[2]]
-```
-
-
+There are many ways to calculate the parameters. 
 
 #### 2.2.2 Function "ouFit.ML"
 
@@ -170,7 +119,6 @@ ouFit.ML=function(spread) {
         return(theta) 
 } 
 
-
 ```
 
 ##### 2.2.2.1 Calculate the parameters for wheat
@@ -180,33 +128,36 @@ ouFit.ML=function(spread) {
 
 wheat <- as.vector(price[,2]) # convert to vector 
 head(wheat)
-plot(wheat, type = "l")
+#plot(wheat, type = "l")
 ouFit.ML(wheat)
-
+paraWheat <- c(ouFit.ML(wheat)[[1]],ouFit.ML(wheat)[[2]],ouFit.ML(wheat)[[3]])
 ```
 
 ##### 2.2.2.2 Calculate the parameters for oats
 ```{r}
 oats <- as.vector(na.omit(price[,3])) # get rid of n/a and convert to vector 
 head(oats)
-plot(oats, type = "l")
+#plot(oats, type = "l")
 ouFit.ML(oats)
+paraOats <- c(ouFit.ML(oats)[[1]],ouFit.ML(oats)[[2]],ouFit.ML(oats)[[3]])
 ```
 
 ##### 2.2.2.3 Calculate the parameters for barley
 ```{r}
 barley <- as.vector(na.omit(price[,4])) # get rid of n/a and convert to vector 
 head(barley)
-plot(barley, type = "l")
+#plot(barley, type = "l")
 ouFit.ML(barley)
+paraBarley <- c(ouFit.ML(barley)[[1]],ouFit.ML(barley)[[2]],ouFit.ML(barley)[[3]])
 ```
 
 ##### 2.2.2.4 Calculate the parameters for canola
 ```{r}
 canola <- as.vector(na.omit(price[,5])) # get rid of n/a and convert to vector 
 head(canola)
-plot(canola, type = "l")
+#plot(canola, type = "l")
 ouFit.ML(canola)
+paraCanola <- c(ouFit.ML(canola)[[1]],ouFit.ML(canola)[[2]],ouFit.ML(canola)[[3]])
 ```
 
 
@@ -214,17 +165,90 @@ ouFit.ML(canola)
 ```{r}
 dry.peas <- as.vector(na.omit(price[,6])) # get rid of n/a and convert to vector 
 head(dry.peas)
-plot(dry.peas, type = "l")
+#plot(dry.peas, type = "l")
 ouFit.ML(dry.peas)
+paraDrypeas <- c(ouFit.ML(dry.peas)[[1]],ouFit.ML(dry.peas)[[2]],ouFit.ML(dry.peas)[[3]])
 ```
 
+##### 2.2.2.6 All the parameters estimates
+
+```{r}
+para <- data.frame(rbind(paraWheat,paraOats,paraBarley,paraCanola,paraDrypeas))
+rownames(para) <- c("Wheat","Oats","Barley","Canola","Drypeas")
+colnames(para) <- c("Theta", "Mu", "Delta")
+para
+```
+
+##### 2.2.2.7 The price graphs for crops
+
+```{r}
+plot(wheat, type = "l",lwd=2.5, ylim = c(120,650), xlab ="Crop prices", col = 1)
+lines(oats, type = "l",lwd=2.5, col=2)
+lines(barley, type = "l",lwd=2.5, col=3)
+lines(canola, type = "l",lwd=2.5, col=4)
+lines(dry.peas, type = "l",lwd=2.5,col=5)
+legend("topleft", c("wheat","oats","barley","canola","dry.peas"),lty=c(1,1),lwd=c(2.5,2.5),col= c(1,2,3,4,5) )
+```
 
 
 ## 3 Generate the price vectors/matrices by simulation
 
-There are two packages we can use to generate Vasicek process. We try both and get different results. It may be because both use the random method to simulation.
+There are two packages we can use to generate Vasicek process.
 
-We find the "yuima" is better than "sde.sim"
+
+The following simulation equation can be used for generating paths (sampled with fixed time steps of $\delta$). The equation is an exact solution of the SDE.
+$$S_{i+1} = S_i e^{-\theta \delta} + \mu (1- e^{-\theta \delta}) + \delta \sqrt(\frac{1- e^{-2 \theta \delta}}{2 \theta}) N_{0,1}$$
+
+
+### 3.3 Function 
+
+#### 3.3.1
+
+```{}
+# Brownian motion
+# Example from Dixit and Pindyck, 1994, pp.74-76
+# Simple mean-reverting process:% dx = nu (xbar - x) dt + sigma dz
+# 
+OU.sim <- function(para = c(0.01, 200, 1), x0= 1, periods=100){
+        periods=100; #Number of periods
+nu = c(0.0, 0.01, 0.02, 0.5); # speed of reversion
+sigma = ouFit.ML(wheat)[[2]]; # in monthly terms
+ones = c(1,1,1,1) # all one vector
+sigma2 = (((sigma^2)*(2*nu)).*(ones-exp(-2*nu))).*0.5; #dt=1;
+xbar=c(1, 1, 1, 1); # Level to which x tends to revert, or normal level
+x=matrix(rep(0, periods*4), periods, 4) # all zero, 100*4 matrix
+epsilon=matrix(rnorm(periods*4),periods,4); # random normal number, 100*4 matrix
+x[1,]=c(1,1,1,1); # Starting value of first row of x 
+i=2;
+
+for 
+while i<periods+1
+#    x(i, :)=x(i-1, :)+nu.*(xbar-x(i-1, :)) + sigma*epsilon(i-1, :);
+    x(i, :) = x(i-1, :) + xbar.*(ones(1,4)-exp(-nu)) + x(i-1, :).* ...
+       (exp(-nu)-ones(1,4)) + sigma*epsilon(i-1, :);
+    i=i+1;
+end;
+
+#figure (1)
+#plot(x);
+#xlabel('Period');
+#ylabel('Value of x');
+#title('Ornstein-Uhlenbeck Stochastic Mean-Reversion Process');
+#legend('0.00', '0.01', '0.02','0.50'); 
+    
+        
+        
+}
+
+
+```
+Graph
+```{r}
+
+
+
+```
+
 
 ### 3.1 "yuima" packages
 
@@ -416,66 +440,7 @@ tile
 
 ```
 
-### 3.2 "Sde.sim" packages
 
-Recall "sde.sim" package uses this notation:
-
-$$dX_t = (\theta_1 - \theta_2X_t)dt +\theta_3dW_t,    X_0 = x_0$$
-
-For "sde.sim" packages, each price simulation uses different random seed. When we try the same random seed, all prices have the same trend.
-
-
-
-
-#### 3.2.1 Generate  1 random samples with 1000 time periods for wheat price using the parameters from estimate
-
-```{r}
-set.seed (123)
-
-thetaw <-c(ouFit.ML(wheat)[[1]]*ouFit.ML(wheat)[[2]], ouFit.ML(wheat)[[1]] ,ouFit.ML(wheat)[[3]])
-Xwheat <- sde.sim (X0=ouFit.ML(wheat)[[2]], model ="OU", theta = thetaw , N =1000 , delta =1)
-plot (Xwheat, main =" Ornstein - Uhlenbeck ")
-```
-
-#### 3.2.2  Generate  1 random samples  with 1000 time periods for oats price using the parameters from estimate
-
-
-```{r}
-set.seed (321)
-
-thetao <-c(ouFit.ML(oats)[[1]]*ouFit.ML(oats)[[2]], ouFit.ML(oats)[[1]] ,ouFit.ML(oats)[[3]])
-Xoats <- sde.sim (X0=ouFit.ML(oats)[[2]], model ="OU", theta = thetao , N =1000 , delta =1)
-plot (Xoats, main =" Ornstein - Uhlenbeck ")
-```
-
-#### 3.2.3 Generate  1 random samples  with 1000 time periods for barley price using the parameters from estimate
-
-```{r}
-set.seed (132)
-
-thetab <-c(ouFit.ML(barley)[[1]]*ouFit.ML(barley)[[2]], ouFit.ML(barley)[[1]] ,ouFit.ML(barley)[[3]])
-# set initial value as the long term mean mu.
-Xbarley <- sde.sim (X0= ouFit.ML(barley)[[2]], model ="OU", theta = thetab , N =1000 , delta =1)
-plot (Xbarley, main =" Ornstein - Uhlenbeck ")
-```
-#### 3.2.4 Generate  1 random samples with 1000 time periods for canola price using the parameters from estimate
-
-```{r}
-set.seed (312)
-
-thetac <-c(ouFit.ML(canola)[[1]]*ouFit.ML(canola)[[2]], ouFit.ML(canola)[[1]] ,ouFit.ML(canola)[[3]])
-Xcanola <- sde.sim (X0=ouFit.ML(canola)[[2]], model ="OU", theta = thetac , N =1000 , delta =1)
-plot (Xcanola, main =" Ornstein - Uhlenbeck ")
-```
-#### 3.2.5 Generate  1 random samples with 1000 time periods for dry.peas price using the parameters from estimate
-
-```{r}
-set.seed (231)
-
-thetad <-c(ouFit.ML(dry.peas)[[1]]*ouFit.ML(dry.peas)[[2]], ouFit.ML(dry.peas)[[1]] ,ouFit.ML(dry.peas)[[3]])
-Xdry.peas <- sde.sim (X0=ouFit.ML(dry.peas)[[2]], model ="OU", theta = thetad , N =1000 , delta =1)
-plot (Xdry.peas, main =" Ornstein - Uhlenbeck ")
-```
 
 
 ## 4  Conclusion
